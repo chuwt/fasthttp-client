@@ -146,6 +146,8 @@ func (fh *FastHttp) call(url, method string, headers requestHeaders, body []byte
 	defer fasthttp.ReleaseResponse(resp) // 用完需要释放资源
 
 	client := &fasthttp.Client{}
+	client.ReadTimeout = fh.timeout
+	// client.DoTimeout 超时后不会断开连接，所以使用readTimeout
 	if err := client.Do(req, resp); err != nil {
 		return nil, err
 	}
