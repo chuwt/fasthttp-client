@@ -2,6 +2,7 @@ package fasthttp
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,10 +30,22 @@ var (
 
 type FastHttp struct {
 	timeout time.Duration
+	crt     *tls.Certificate
 }
 
+// unThread safe, prefer global setting
 func (fh *FastHttp) SetTimeout(duration time.Duration) {
 	fh.timeout = duration
+}
+
+// unThread safe, prefer global setting
+func (fh *FastHttp) SetCrt(certPath, keyPath string) error {
+	clientCrt, err := tls.LoadX509KeyPair(certPath, keyPath)
+	if err != nil {
+		return err
+	}
+	fh.crt = &clientCrt
+	return nil
 }
 
 func (fh *FastHttp) Get(url string, options ...RequestOption) ([]byte, error) {
@@ -145,8 +158,15 @@ func (fh *FastHttp) call(url, method string, headers requestHeaders, body []byte
 	resp := fasthttp.AcquireResponse()
 	defer fasthttp.ReleaseResponse(resp) // 用完需要释放资源
 
-	client := &fasthttp.Client{}
-	client.ReadTimeout = fh.timeout
+	client := &fasthttp.Client{
+		ReadTimeout: fh.timeout,
+	}
+	if fh.crt != nil {
+		client.TLSConfig = &tls.Config{
+			InsecureSkipVerify: true,
+			Certificates:       []tls.Certificate{*fh.crt},
+		}
+	}
 	// client.DoTimeout 超时后不会断开连接，所以使用readTimeout
 	if err := client.Do(req, resp); err != nil {
 		return nil, err

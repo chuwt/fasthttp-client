@@ -7,6 +7,7 @@
 - get
 - post
 - sendFile
+- 支持使用tls
 
 # 快速开始
 - get
@@ -68,7 +69,13 @@
   	)
   // AddFile(fileName, filePath)
   ```
+- tls
 
-# todo
+  ```
+  fh = new(FastHttp)
+  fh.SetCrt(certPath, certKey)
+  ```
 
-- 请求时添加https证书
+- ps
+- fh.SetTimeout 非线程安全，倾向于全局配置
+- fh.SetCrt 非线程安全，倾向于全局配置
