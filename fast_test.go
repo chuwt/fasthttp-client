@@ -2,17 +2,15 @@ package fasthttp
 
 import (
 	"testing"
-	"time"
 )
 
 var (
-	client  = Client{}
 	resByte []byte
 	err     error
 )
 
 func TestGet(t *testing.T) {
-	resByte, err = client.Get("http://httpbin.org/get",
+	resByte, err = NewClient().Get("http://httpbin.org/get",
 		AddParam("param1", "param1"),
 		AddParams(RequestParams{
 			"param2": "param2",
@@ -33,7 +31,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestPost(t *testing.T) {
-	resByte, err = client.Post("http://httpbin.org/post",
+	resByte, err = NewClient().Post("http://httpbin.org/post",
 		struct {
 			Request string `json:"request" form:"request"`
 			Num     int    `json:"num"`
@@ -57,8 +55,7 @@ func TestPost(t *testing.T) {
 }
 
 func TestSendFile(t *testing.T) {
-	client.SetTimeout(time.Minute)
-	resByte, err = client.SendFile("http://httpbin.org/post",
+	resByte, err = NewClient().SendFile("http://httpbin.org/post",
 		AddFile("a", "/Users/chuwt/Downloads/test.jpg"),
 		AddFiles(
 			RequestFiles{

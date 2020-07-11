@@ -28,18 +28,25 @@ var (
 	EmptyUrlErr = errors.New("empty url")
 )
 
-type Client struct {
+type client struct {
 	timeout time.Duration
 	crt     *tls.Certificate
 }
 
+func NewClient() *client {
+	return &client{
+		timeout: defaultTimeDuration,
+		crt:     nil,
+	}
+}
+
 // unThread safe, prefer global setting
-func (c *Client) SetTimeout(duration time.Duration) {
+func (c *client) SetTimeout(duration time.Duration) {
 	c.timeout = duration
 }
 
 // unThread safe, prefer global setting
-func (c *Client) SetCrt(certPath, keyPath string) error {
+func (c *client) SetCrt(certPath, keyPath string) error {
 	clientCrt, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		return err
@@ -48,8 +55,7 @@ func (c *Client) SetCrt(certPath, keyPath string) error {
 	return nil
 }
 
-func (c *Client) Get(url string, options ...RequestOption) ([]byte, error) {
-	c.check()
+func (c *client) Get(url string, options ...RequestOption) ([]byte, error) {
 	if url == "" {
 		return nil, EmptyUrlErr
 	}
@@ -65,8 +71,7 @@ func (c *Client) Get(url string, options ...RequestOption) ([]byte, error) {
 	return c.call(url, fasthttp.MethodGet, opts.headers, nil)
 }
 
-func (c *Client) GetStream(url string, options ...RequestOption) ([]byte, error) {
-	c.check()
+func (c *client) GetStream(url string, options ...RequestOption) ([]byte, error) {
 	if url == "" {
 		return nil, EmptyUrlErr
 	}
@@ -82,8 +87,7 @@ func (c *Client) GetStream(url string, options ...RequestOption) ([]byte, error)
 	return c.call(url, fasthttp.MethodGet, opts.headers, nil)
 }
 
-func (c *Client) Post(url string, body interface{}, options ...RequestOption) ([]byte, error) {
-	c.check()
+func (c *client) Post(url string, body interface{}, options ...RequestOption) ([]byte, error) {
 	if url == "" {
 		return nil, EmptyUrlErr
 	}
@@ -99,9 +103,7 @@ func (c *Client) Post(url string, body interface{}, options ...RequestOption) ([
 	}
 }
 
-func (c *Client) SendFile(url string, options ...RequestOption) ([]byte, error) {
-	c.check()
-
+func (c *client) SendFile(url string, options ...RequestOption) ([]byte, error) {
 	if url == "" {
 		return nil, EmptyUrlErr
 	}
@@ -134,7 +136,7 @@ func (c *Client) SendFile(url string, options ...RequestOption) ([]byte, error) 
 	return c.call(url, fasthttp.MethodPost, opts.headers, bodyBuffer.Bytes())
 }
 
-func (c *Client) call(url, method string, headers requestHeaders, body []byte) ([]byte, error) {
+func (c *client) call(url, method string, headers requestHeaders, body []byte) ([]byte, error) {
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req) // 用完需要释放资源
 
@@ -189,12 +191,4 @@ func (c *Client) call(url, method string, headers requestHeaders, body []byte) (
 		return nil, err
 	}
 	return resp.Body(), nil
-}
-
-// config check
-// now only check timeout
-func (c *Client) check() {
-	if c.timeout == 0 {
-		c.timeout = defaultTimeDuration
-	}
 }
