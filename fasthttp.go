@@ -28,28 +28,28 @@ var (
 	EmptyUrlErr = errors.New("empty url")
 )
 
-type FastHttp struct {
+type Client struct {
 	timeout time.Duration
 	crt     *tls.Certificate
 }
 
 // unThread safe, prefer global setting
-func (fh *FastHttp) SetTimeout(duration time.Duration) {
-	fh.timeout = duration
+func (c *Client) SetTimeout(duration time.Duration) {
+	c.timeout = duration
 }
 
 // unThread safe, prefer global setting
-func (fh *FastHttp) SetCrt(certPath, keyPath string) error {
+func (c *Client) SetCrt(certPath, keyPath string) error {
 	clientCrt, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		return err
 	}
-	fh.crt = &clientCrt
+	c.crt = &clientCrt
 	return nil
 }
 
-func (fh *FastHttp) Get(url string, options ...RequestOption) ([]byte, error) {
-	fh.check()
+func (c *Client) Get(url string, options ...RequestOption) ([]byte, error) {
+	c.check()
 	if url == "" {
 		return nil, EmptyUrlErr
 	}
@@ -62,11 +62,28 @@ func (fh *FastHttp) Get(url string, options ...RequestOption) ([]byte, error) {
 		params = append(params, fmt.Sprintf("%s=%s", key, value))
 	}
 	url = fmt.Sprintf("%s?%s", url, strings.Join(params, "&"))
-	return fh.call(url, fasthttp.MethodGet, opts.headers, nil)
+	return c.call(url, fasthttp.MethodGet, opts.headers, nil)
 }
 
-func (fh *FastHttp) Post(url string, body interface{}, options ...RequestOption) ([]byte, error) {
-	fh.check()
+func (c *Client) GetStream(url string, options ...RequestOption) ([]byte, error) {
+	c.check()
+	if url == "" {
+		return nil, EmptyUrlErr
+	}
+	opts := newRequestOptions()
+	for _, op := range options {
+		op.f(opts)
+	}
+	params := make([]string, 0)
+	for key, value := range opts.params {
+		params = append(params, fmt.Sprintf("%s=%s", key, value))
+	}
+	url = fmt.Sprintf("%s?%s", url, strings.Join(params, "&"))
+	return c.call(url, fasthttp.MethodGet, opts.headers, nil)
+}
+
+func (c *Client) Post(url string, body interface{}, options ...RequestOption) ([]byte, error) {
+	c.check()
 	if url == "" {
 		return nil, EmptyUrlErr
 	}
@@ -78,12 +95,12 @@ func (fh *FastHttp) Post(url string, body interface{}, options ...RequestOption)
 	if bodyByte, err := json.Marshal(body); err != nil {
 		return nil, err
 	} else {
-		return fh.call(url, fasthttp.MethodPost, opts.headers, bodyByte)
+		return c.call(url, fasthttp.MethodPost, opts.headers, bodyByte)
 	}
 }
 
-func (fh *FastHttp) SendFile(url string, options ...RequestOption) ([]byte, error) {
-	fh.check()
+func (c *Client) SendFile(url string, options ...RequestOption) ([]byte, error) {
+	c.check()
 
 	if url == "" {
 		return nil, EmptyUrlErr
@@ -114,10 +131,10 @@ func (fh *FastHttp) SendFile(url string, options ...RequestOption) ([]byte, erro
 	bodyWriter.Close()
 	opts.headers.normal["content-type"] = bodyWriter.FormDataContentType()
 
-	return fh.call(url, fasthttp.MethodPost, opts.headers, bodyBuffer.Bytes())
+	return c.call(url, fasthttp.MethodPost, opts.headers, bodyBuffer.Bytes())
 }
 
-func (fh *FastHttp) call(url, method string, headers requestHeaders, body []byte) ([]byte, error) {
+func (c *Client) call(url, method string, headers requestHeaders, body []byte) ([]byte, error) {
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req) // 用完需要释放资源
 
@@ -159,12 +176,12 @@ func (fh *FastHttp) call(url, method string, headers requestHeaders, body []byte
 	defer fasthttp.ReleaseResponse(resp) // 用完需要释放资源
 
 	client := &fasthttp.Client{
-		ReadTimeout: fh.timeout,
+		ReadTimeout: c.timeout,
 	}
-	if fh.crt != nil {
+	if c.crt != nil {
 		client.TLSConfig = &tls.Config{
 			InsecureSkipVerify: true,
-			Certificates:       []tls.Certificate{*fh.crt},
+			Certificates:       []tls.Certificate{*c.crt},
 		}
 	}
 	// client.DoTimeout 超时后不会断开连接，所以使用readTimeout
@@ -176,8 +193,8 @@ func (fh *FastHttp) call(url, method string, headers requestHeaders, body []byte
 
 // config check
 // now only check timeout
-func (fh *FastHttp) check() {
-	if fh.timeout == 0 {
-		fh.timeout = defaultTimeDuration
+func (c *Client) check() {
+	if c.timeout == 0 {
+		c.timeout = defaultTimeDuration
 	}
 }

@@ -1,18 +1,20 @@
 package fasthttp
 
 import (
+	"bufio"
 	"testing"
 	"time"
 )
 
-func TestGet(t *testing.T) {
-	var (
-		fh      = FastHttp{}
-		resByte []byte
-		err     error
-	)
+var (
+	client  = Client{}
+	resByte []byte
+	err     error
+	b       *bufio.Reader
+)
 
-	resByte, err = fh.Get("http://httpbin.org/get",
+func TestGet(t *testing.T) {
+	resByte, err = client.Get("http://httpbin.org/get",
 		AddParam("param1", "param1"),
 		AddParams(RequestParams{
 			"param2": "param2",
@@ -33,13 +35,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestPost(t *testing.T) {
-	var (
-		fh      = FastHttp{}
-		resByte []byte
-		err     error
-	)
-
-	resByte, err = fh.Post("http://httpbin.org/post",
+	resByte, err = client.Post("http://httpbin.org/post",
 		struct {
 			Request string `json:"request" form:"request"`
 			Num     int    `json:"num"`
@@ -63,13 +59,8 @@ func TestPost(t *testing.T) {
 }
 
 func TestSendFile(t *testing.T) {
-	var (
-		fh      = FastHttp{}
-		resByte []byte
-		err     error
-	)
-	fh.SetTimeout(time.Minute)
-	resByte, err = fh.SendFile("http://httpbin.org/post",
+	client.SetTimeout(time.Minute)
+	resByte, err = client.SendFile("http://httpbin.org/post",
 		AddFile("a", "/Users/chuwt/Downloads/test.jpg"),
 		AddFiles(
 			RequestFiles{

@@ -12,8 +12,8 @@
 # 快速开始
 - get
     ```
-    fh = new(FastHttp)
-    resByte, err = fh.Get("http://httpbin.org/get",
+    client = new(Client)
+    resByte, err = client.Get("http://httpbin.org/get",
 		AddParam("param1", "param1"),
 		AddParams(RequestParams{
 			"param2": "param2",
@@ -35,8 +35,8 @@
 - post
 
   ```
-  fh = new(FastHttp)
-  resByte, err = fh.Post("http://httpbin.org/post",
+  client = new(Client)
+  resByte, err = client.Post("http://httpbin.org/post",
   		struct {
   			Request string `json:"request"`
   			Num     int    `json:"num"`
@@ -61,9 +61,9 @@
 - sendFile
 
   ```
-  fh = new(FastHttp)
-  fh.SetTimeout(time.Minute)
-  resByte, err = fh.SendFile("http://httpbin.org/post",
+  client = new(Client)
+  client.SetTimeout(time.Minute)
+  resByte, err = client.SendFile("http://httpbin.org/post",
   		AddFile("a", "/Users/chuwt/Downloads/test.jpg"),
   		AddFile("b", "/Users/chuwt/Downloads/test.jpg"),
   	)
@@ -72,10 +72,15 @@
 - tls
 
   ```
-  fh = new(FastHttp)
-  fh.SetCrt(certPath, certKey)
+  client = new(FastHttp)
+  client.SetCrt(certPath, certKey)
   ```
 
 - ps
-- fh.SetTimeout 非线程安全，倾向于全局配置
-- fh.SetCrt 非线程安全，倾向于全局配置
+    - client.SetTimeout 非线程安全，倾向于做为全局配置使用
+    - client.SetCrt 非线程安全，倾向于全局做为配置使用
+
+# todo
+- 返回 body stream 支持
+    - 暂时未找到可行办法，看了源码，遇到chunked时是等待所有数据返回后才返回responseBody，所以无法像net/http那样获取到io.Reader
+      浪费了我一天的时间😂，不行就要爆改代码了
