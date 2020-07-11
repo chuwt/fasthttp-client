@@ -1,7 +1,6 @@
 package fasthttp
 
 import (
-	"bufio"
 	"testing"
 	"time"
 )
@@ -10,7 +9,6 @@ var (
 	client  = Client{}
 	resByte []byte
 	err     error
-	b       *bufio.Reader
 )
 
 func TestGet(t *testing.T) {
