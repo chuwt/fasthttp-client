@@ -3,7 +3,7 @@ package fasthttp
 type (
 	RequestParams  map[string]string
 	RequestHeaders map[string]string
-	RequestCookie  map[string]string
+	RequestCookies map[string]string
 	RequestFiles   map[string]string
 )
 
@@ -69,7 +69,7 @@ func AddHeaders(headers RequestHeaders) RequestOption {
 }
 
 // multi cookies
-func AddCookies(cookies RequestCookie) RequestOption {
+func AddCookies(cookies RequestCookies) RequestOption {
 	return RequestOption{
 		f: func(opts *requestOptions) {
 			for key, value := range cookies {
@@ -108,7 +108,7 @@ type requestOptions struct {
 
 type requestHeaders struct {
 	normal  RequestHeaders
-	cookies RequestCookie
+	cookies RequestCookies
 }
 
 type RequestOption struct {

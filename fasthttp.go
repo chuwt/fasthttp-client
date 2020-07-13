@@ -25,7 +25,8 @@ var (
 	// 文件上传
 	formContentType = "multipart/form-data"
 
-	EmptyUrlErr = errors.New("empty url")
+	EmptyUrlErr  = errors.New("empty url")
+	EmptyFileErr = errors.New("empyt file")
 )
 
 type client struct {
@@ -41,8 +42,9 @@ func NewClient() *client {
 }
 
 // unThread safe, prefer global setting
-func (c *client) SetTimeout(duration time.Duration) {
+func (c *client) SetTimeout(duration time.Duration) error {
 	c.timeout = duration
+	return nil
 }
 
 // unThread safe, prefer global setting
@@ -55,7 +57,7 @@ func (c *client) SetCrt(certPath, keyPath string) error {
 	return nil
 }
 
-func (c *client) Get(url string, options ...RequestOption) ([]byte, error) {
+func (c *client) Get(url string, options ...RequestOption) (*Response, error) {
 	if url == "" {
 		return nil, EmptyUrlErr
 	}
@@ -71,23 +73,7 @@ func (c *client) Get(url string, options ...RequestOption) ([]byte, error) {
 	return c.call(url, fasthttp.MethodGet, opts.headers, nil)
 }
 
-func (c *client) GetStream(url string, options ...RequestOption) ([]byte, error) {
-	if url == "" {
-		return nil, EmptyUrlErr
-	}
-	opts := newRequestOptions()
-	for _, op := range options {
-		op.f(opts)
-	}
-	params := make([]string, 0)
-	for key, value := range opts.params {
-		params = append(params, fmt.Sprintf("%s=%s", key, value))
-	}
-	url = fmt.Sprintf("%s?%s", url, strings.Join(params, "&"))
-	return c.call(url, fasthttp.MethodGet, opts.headers, nil)
-}
-
-func (c *client) Post(url string, body interface{}, options ...RequestOption) ([]byte, error) {
+func (c *client) Post(url string, body interface{}, options ...RequestOption) (*Response, error) {
 	if url == "" {
 		return nil, EmptyUrlErr
 	}
@@ -103,13 +89,16 @@ func (c *client) Post(url string, body interface{}, options ...RequestOption) ([
 	}
 }
 
-func (c *client) SendFile(url string, options ...RequestOption) ([]byte, error) {
+func (c *client) SendFile(url string, options ...RequestOption) (*Response, error) {
 	if url == "" {
 		return nil, EmptyUrlErr
 	}
 	opts := newRequestOptions()
 	for _, op := range options {
 		op.f(opts)
+	}
+	if len(opts.files) == 0 {
+		return nil, EmptyFileErr
 	}
 	bodyBuffer := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuffer)
@@ -136,7 +125,7 @@ func (c *client) SendFile(url string, options ...RequestOption) ([]byte, error) 
 	return c.call(url, fasthttp.MethodPost, opts.headers, bodyBuffer.Bytes())
 }
 
-func (c *client) call(url, method string, headers requestHeaders, body []byte) ([]byte, error) {
+func (c *client) call(url, method string, headers requestHeaders, body []byte) (*Response, error) {
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req) // 用完需要释放资源
 
@@ -190,5 +179,23 @@ func (c *client) call(url, method string, headers requestHeaders, body []byte) (
 	if err := client.Do(req, resp); err != nil {
 		return nil, err
 	}
-	return resp.Body(), nil
+
+	ret := &Response{
+		Cookie:     make(RequestCookies),
+		StatusCode: resp.StatusCode(),
+		Body:       resp.Body(),
+	}
+
+	rh := new(fasthttp.ResponseHeader)
+	resp.Header.CopyTo(rh)
+	rh.VisitAllCookie(func(key, value []byte) {
+		ret.Cookie[string(key)] = string(value)
+	})
+	return ret, nil
+}
+
+type Response struct {
+	Cookie     RequestCookies
+	StatusCode int
+	Body       []byte
 }

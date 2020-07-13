@@ -12,8 +12,7 @@
 # 快速开始
 - get
     ```
-    client = new(Client)
-    resByte, err = client.Get("http://httpbin.org/get",
+    res, err = NewClient().Get("http://httpbin.org/get",
 		AddParam("param1", "param1"),
 		AddParams(RequestParams{
 			"param2": "param2",
@@ -35,8 +34,7 @@
 - post
 
   ```
-  client = new(Client)
-  resByte, err = client.Post("http://httpbin.org/post",
+  res, err = NewClient().Post("http://httpbin.org/post",
   		struct {
   			Request string `json:"request"`
   			Num     int    `json:"num"`
@@ -61,9 +59,9 @@
 - sendFile
 
   ```
-  client = new(Client)
+  client = NewClient()
   client.SetTimeout(time.Minute)
-  resByte, err = client.SendFile("http://httpbin.org/post",
+  res, err = client.SendFile("http://httpbin.org/post",
   		AddFile("a", "/Users/chuwt/Downloads/test.jpg"),
   		AddFile("b", "/Users/chuwt/Downloads/test.jpg"),
   	)
@@ -72,18 +70,19 @@
 - tls
 
   ```
-  client = new(FastHttp)
+  client = NewClient()
   client.SetCrt(certPath, certKey)
   ```
 
 - ps
     - client.SetTimeout 非线程安全，倾向于做为全局配置使用
-    - client.SetCrt 非线程安全，倾向于全局做为配置使用
+    - client.SetCrt 非线程安全，倾向于做为全局配置使用
 
 - 说明
     - 根据fasthttp的[issue](https://github.com/valyala/fasthttp/issues/411), client不支持获取返回的类似io.Reader，需要等待所有
     返回都被接收后才返回client.Do, 所以没法支持 `chunked` 返回
     - 不过[这个人](https://github.com/erikdubbelboer)写了一个[demo](https://github.com/erikdubbelboer/fasthttp/commit/69515271036c791b25543da6a4360fadb6b61173)用来支持获取io.Reader的body，但是没有merge到主分支上去
+    - [官方回复](https://github.com/valyala/fasthttp/issues/849)
 
 # todo
 - proxy 支持
