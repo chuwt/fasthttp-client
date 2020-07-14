@@ -1,4 +1,4 @@
-module fasthttp-client
+module fasthttp
 
 go 1.14
 

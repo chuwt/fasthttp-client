@@ -75,10 +75,12 @@
   ```
 
 - ps
-    - client.SetTimeout 非线程安全，倾向于做为全局配置使用
-    - client.SetCrt 非线程安全，倾向于做为全局配置使用
+    - client.SetTimeout 非线程安全，倾向于做为全局(实例)配置使用
+    - client.SetCrt 非线程安全，倾向于做为全局(实例)配置使用
 
 - 说明
+    - 暂时不支持get中带有body的请求
+    - post 的content-type默认为`application/x-www-form-urlencoded`
     - 根据fasthttp的[issue](https://github.com/valyala/fasthttp/issues/411), client不支持获取返回的类似io.Reader，需要等待所有
     返回都被接收后才返回client.Do, 所以没法支持 `chunked` 返回
     - 不过[这个人](https://github.com/erikdubbelboer)写了一个[demo](https://github.com/erikdubbelboer/fasthttp/commit/69515271036c791b25543da6a4360fadb6b61173)用来支持获取io.Reader的body，但是没有merge到主分支上去

@@ -63,7 +63,7 @@ func TestPost(t *testing.T) {
 func TestSendFile(t *testing.T) {
 	res, err = SendFile("http://httpbin.org/post",
 		AddFile("a", "/Users/chuwt/Downloads/test.jpg"))
-	t.Log(res, err)
+	t.Log(string(res.Body), err)
 
 	res, err = NewClient().SendFile("http://httpbin.org/post",
 		AddFile("a", "/Users/chuwt/Downloads/test.jpg"),

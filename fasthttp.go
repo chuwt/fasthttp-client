@@ -26,7 +26,7 @@ var (
 	formContentType = "multipart/form-data"
 
 	EmptyUrlErr  = errors.New("empty url")
-	EmptyFileErr = errors.New("empyt file")
+	EmptyFileErr = errors.New("empty file")
 )
 
 type client struct {
@@ -128,6 +128,8 @@ func (c *client) SendFile(url string, options ...RequestOption) (*Response, erro
 func (c *client) call(url, method string, headers requestHeaders, body []byte) (*Response, error) {
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req) // 用完需要释放资源
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(resp) // 用完需要释放资源
 
 	req.SetRequestURI(url)
 	req.Header.SetMethod(method)
@@ -163,9 +165,6 @@ func (c *client) call(url, method string, headers requestHeaders, body []byte) (
 		}
 	}
 
-	resp := fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseResponse(resp) // 用完需要释放资源
-
 	client := &fasthttp.Client{
 		ReadTimeout: c.timeout,
 	}
@@ -186,16 +185,14 @@ func (c *client) call(url, method string, headers requestHeaders, body []byte) (
 		Body:       resp.Body(),
 	}
 
-	rh := new(fasthttp.ResponseHeader)
-	resp.Header.CopyTo(rh)
-	rh.VisitAllCookie(func(key, value []byte) {
+	resp.Header.VisitAllCookie(func(key, value []byte) {
 		ret.Cookie[string(key)] = string(value)
 	})
 	return ret, nil
 }
 
 type Response struct {
-	Cookie     RequestCookies
 	StatusCode int
 	Body       []byte
+	Cookie     RequestCookies
 }
