@@ -1,4 +1,4 @@
-module fasthttp
+module github.com/chuwt/fasthttp-client
 
 go 1.14
 

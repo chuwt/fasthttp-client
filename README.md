@@ -8,6 +8,7 @@
 - post
 - sendFile
 - 支持使用tls
+- 支持proxy(全局)
 
 # 快速开始
 - get
@@ -87,4 +88,4 @@
     - [官方回复](https://github.com/valyala/fasthttp/issues/849)
 
 # todo
-- proxy 支持
+- 单个请求的proxy 支持

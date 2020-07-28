@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/valyala/fasthttp"
+	"github.com/valyala/fasthttp/fasthttpproxy"
 	"io"
 	"mime/multipart"
 	"os"
@@ -30,6 +31,7 @@ var (
 )
 
 type client struct {
+	proxy   string // set to all requests
 	timeout time.Duration
 	crt     *tls.Certificate
 }
@@ -39,6 +41,13 @@ func NewClient() *client {
 		timeout: defaultTimeDuration,
 		crt:     nil,
 	}
+}
+
+// unThread safe, prefer global setting
+// set global proxy
+func (c *client) SetProxy(proxy string) error {
+	c.proxy = proxy
+	return nil
 }
 
 // unThread safe, prefer global setting
@@ -173,6 +182,9 @@ func (c *client) call(url, method string, headers requestHeaders, body []byte) (
 			InsecureSkipVerify: true,
 			Certificates:       []tls.Certificate{*c.crt},
 		}
+	}
+	if c.proxy != "" {
+		client.Dial = fasthttpproxy.FasthttpHTTPDialer(c.proxy)
 	}
 	// client.DoTimeout 超时后不会断开连接，所以使用readTimeout
 	if err := client.Do(req, resp); err != nil {

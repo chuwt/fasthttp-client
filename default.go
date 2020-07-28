@@ -23,3 +23,7 @@ func SetTimeout(duration time.Duration) error {
 func SetCrt(certPath, keyPath string) error {
 	return defaultClient.SetCrt(certPath, keyPath)
 }
+
+func SetProxy(proxy string) error {
+	return defaultClient.SetProxy(proxy)
+}
