@@ -3,9 +3,9 @@ package fasthttp
 import (
 	"bytes"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttpproxy"
 	"io"
@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -22,96 +23,152 @@ var (
 	// 默认的content-type	form 表单
 	defaultContentType = "application/x-www-form-urlencoded"
 	// json格式的body
-	dataContentType = "application/json"
+	jsonContentType = "application/json"
 	// 文件上传
 	formContentType = "multipart/form-data"
 
 	EmptyUrlErr  = errors.New("empty url")
 	EmptyFileErr = errors.New("empty file")
+
+	json = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
-type client struct {
+type Client struct {
 	proxy   string // set to all requests
 	timeout time.Duration
 	crt     *tls.Certificate
+	opts    *requestOptions
 }
 
-func NewClient() *client {
-	return &client{
+func NewClientPool() sync.Pool {
+	return sync.Pool{
+		New: func() interface{} {
+			return &Client{
+				timeout: defaultTimeDuration,
+				crt:     nil,
+				opts:    newRequestOptions(),
+			}
+		},
+	}
+}
+
+func NewClient() *Client {
+	return &Client{
 		timeout: defaultTimeDuration,
 		crt:     nil,
+		opts:    newRequestOptions(),
 	}
 }
 
-// unThread safe, prefer global setting
-// set global proxy
-func (c *client) SetProxy(proxy string) error {
+func (c *Client) SetProxy(proxy string) *Client {
 	c.proxy = proxy
-	return nil
+	return c
 }
 
-// unThread safe, prefer global setting
-func (c *client) SetTimeout(duration time.Duration) error {
+func (c *Client) SetTimeout(duration time.Duration) *Client {
 	c.timeout = duration
-	return nil
+	return c
 }
 
-// unThread safe, prefer global setting
-func (c *client) SetCrt(certPath, keyPath string) error {
+func (c *Client) SetCrt(certPath, keyPath string) *Client {
 	clientCrt, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
-		return err
+		// todo handle this err
+		clientCrt = tls.Certificate{}
 	}
 	c.crt = &clientCrt
-	return nil
+	return c
 }
 
-func (c *client) Get(url string, options ...RequestOption) (*Response, error) {
+func (c *Client) AddParam(key, value string) *Client {
+	c.opts.params[key] = value
+	return c
+}
+
+func (c *Client) AddParams(params RequestParams) *Client {
+	for key, value := range params {
+		c.opts.params[key] = value
+	}
+	return c
+}
+
+func (c *Client) AddHeader(key, value string) *Client {
+	c.opts.headers.normal[key] = value
+	return c
+}
+
+func (c *Client) AddHeaders(headers RequestHeaders) *Client {
+	for key, value := range headers {
+		c.opts.headers.normal[key] = value
+	}
+	return c
+}
+
+func (c *Client) AddCookie(key, value string) *Client {
+	c.opts.headers.cookies[key] = value
+	return c
+}
+
+func (c *Client) AddCookies(cookies RequestCookies) *Client {
+	for key, value := range cookies {
+		c.opts.headers.cookies[key] = value
+	}
+	return c
+}
+
+func (c *Client) AddFile(fileName, filePath string) *Client {
+	c.opts.files[fileName] = filePath
+	return c
+}
+
+func (c *Client) AddFiles(files RequestFiles) *Client {
+	for key, value := range files {
+		c.opts.files[key] = value
+	}
+	return c
+}
+
+func (c *Client) AddBodyStruct(object interface{}) *Client {
+	bodyByte, _ := json.Marshal(object)
+	c.opts.body = bodyByte
+	return c
+}
+
+func (c *Client) AddBodyBytes(bodyBytes []byte) *Client {
+	c.opts.body = bodyBytes
+	return c
+}
+
+func (c *Client) Get(url string) (*Response, error) {
 	if url == "" {
 		return nil, EmptyUrlErr
 	}
-	opts := newRequestOptions()
-	for _, op := range options {
-		op.f(opts)
-	}
 	params := make([]string, 0)
-	for key, value := range opts.params {
+	for key, value := range c.opts.params {
 		params = append(params, fmt.Sprintf("%s=%s", key, value))
 	}
 	url = fmt.Sprintf("%s?%s", url, strings.Join(params, "&"))
-	return c.call(url, fasthttp.MethodGet, opts.headers, nil)
+	return c.call(url, fasthttp.MethodGet, c.opts.headers, nil)
 }
 
-func (c *client) Post(url string, body interface{}, options ...RequestOption) (*Response, error) {
+func (c *Client) Post(url string) (*Response, error) {
 	if url == "" {
 		return nil, EmptyUrlErr
-	}
-	opts := newRequestOptions()
-	for _, op := range options {
-		op.f(opts)
 	}
 	// 需要根据content-type 进行设置
-	if bodyByte, err := json.Marshal(body); err != nil {
-		return nil, err
-	} else {
-		return c.call(url, fasthttp.MethodPost, opts.headers, bodyByte)
-	}
+	return c.call(url, fasthttp.MethodPost, c.opts.headers, c.opts.body)
 }
 
-func (c *client) SendFile(url string, options ...RequestOption) (*Response, error) {
+func (c *Client) SendFile(url string, options ...RequestOption) (*Response, error) {
 	if url == "" {
 		return nil, EmptyUrlErr
 	}
-	opts := newRequestOptions()
-	for _, op := range options {
-		op.f(opts)
-	}
-	if len(opts.files) == 0 {
+	if len(c.opts.files) == 0 {
 		return nil, EmptyFileErr
 	}
 	bodyBuffer := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuffer)
-	for fileName, filePath := range opts.files {
+	for fileName, filePath := range c.opts.files {
 		fileWriter, err := bodyWriter.CreateFormFile(fileName, path.Base(filePath))
 		if err != nil {
 			return nil, err
@@ -122,19 +179,20 @@ func (c *client) SendFile(url string, options ...RequestOption) (*Response, erro
 			return nil, err
 		}
 		//不要忘记关闭打开的文件
-		defer file.Close()
 		_, err = io.Copy(fileWriter, file)
 		if err != nil {
+			_ = file.Close()
 			return nil, err
 		}
+		_ = file.Close()
 	}
-	bodyWriter.Close()
-	opts.headers.normal["content-type"] = bodyWriter.FormDataContentType()
+	_ = bodyWriter.Close()
+	c.opts.headers.normal["content-type"] = bodyWriter.FormDataContentType()
 
-	return c.call(url, fasthttp.MethodPost, opts.headers, bodyBuffer.Bytes())
+	return c.call(url, fasthttp.MethodPost, c.opts.headers, bodyBuffer.Bytes())
 }
 
-func (c *client) call(url, method string, headers requestHeaders, body []byte) (*Response, error) {
+func (c *Client) call(url, method string, headers requestHeaders, body []byte) (*Response, error) {
 	req := fasthttp.AcquireRequest()
 	defer fasthttp.ReleaseRequest(req) // 用完需要释放资源
 	resp := fasthttp.AcquireResponse()
@@ -155,10 +213,12 @@ func (c *client) call(url, method string, headers requestHeaders, body []byte) (
 	if !req.Header.IsGet() {
 		contentType := string(req.Header.ContentType())
 		switch contentType {
-		case dataContentType:
-			req.SetBody(body)
+		case jsonContentType:
+			if body != nil {
+				req.SetBody(body)
+			}
 		default:
-			if !strings.Contains(contentType, formContentType) {
+			if !strings.Contains(contentType, formContentType) && body != nil {
 				argsMap := make(map[string]interface{})
 				if err := json.Unmarshal(body, &argsMap); err != nil {
 					return nil, err
@@ -186,7 +246,7 @@ func (c *client) call(url, method string, headers requestHeaders, body []byte) (
 	if c.proxy != "" {
 		client.Dial = fasthttpproxy.FasthttpHTTPDialer(c.proxy)
 	}
-	// client.DoTimeout 超时后不会断开连接，所以使用readTimeout
+	// Client.DoTimeout 超时后不会断开连接，所以使用readTimeout
 	if err := client.Do(req, resp); err != nil {
 		return nil, err
 	}
