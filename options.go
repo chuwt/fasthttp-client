@@ -1,20 +1,51 @@
 package fasthttp
 
 type (
-	RequestParams  map[string]string
-	RequestHeaders map[string]string
-	RequestCookies map[string]string
-	RequestFiles   map[string]string
+	Mapper map[string]string
+
+	RequestParams  struct{ Mapper }
+	RequestHeaders struct{ Mapper }
+	RequestCookies struct{ Mapper }
+	RequestFiles   struct{ Mapper }
 )
+
+func NewParams() Mapper {
+	return make(map[string]string)
+}
+
+func NewHeaders() Mapper {
+	return make(map[string]string)
+}
+
+func NewCookies() Mapper {
+	return make(map[string]string)
+}
+
+func NewFiles() Mapper {
+	return make(map[string]string)
+}
+
+func (m Mapper) Get(key string) string {
+	value, ok := m[key]
+	if ok {
+		return value
+	}
+	return ""
+}
+
+func (m Mapper) Set(key, value string) Mapper {
+	m[key] = value
+	return m
+}
 
 func newRequestOptions() *requestOptions {
 	return &requestOptions{
-		files: make(map[string]string),
+		files: RequestFiles{Mapper: NewFiles()},
 		headers: requestHeaders{
-			normal:  make(map[string]string),
-			cookies: make(map[string]string),
+			normal:  RequestHeaders{Mapper: NewHeaders()},
+			cookies: RequestCookies{Mapper: NewCookies()},
 		},
-		params: make(map[string]string),
+		params: RequestParams{Mapper: NewParams()},
 	}
 }
 

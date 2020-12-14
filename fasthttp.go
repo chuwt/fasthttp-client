@@ -81,50 +81,55 @@ func (c *Client) SetCrt(certPath, keyPath string) *Client {
 }
 
 func (c *Client) AddParam(key, value string) *Client {
-	c.opts.params[key] = value
+	c.opts.params.Set(key, value)
 	return c
 }
 
-func (c *Client) AddParams(params RequestParams) *Client {
+func (c *Client) AddParams(params Mapper) *Client {
 	for key, value := range params {
-		c.opts.params[key] = value
+		c.opts.params.Set(key, value)
 	}
 	return c
 }
 
 func (c *Client) AddHeader(key, value string) *Client {
-	c.opts.headers.normal[key] = value
+	c.opts.headers.normal.Set(key, value)
 	return c
 }
 
-func (c *Client) AddHeaders(headers RequestHeaders) *Client {
+func (c *Client) AddHeaders(headers Mapper) *Client {
 	for key, value := range headers {
-		c.opts.headers.normal[key] = value
+		c.opts.headers.normal.Set(key, value)
 	}
 	return c
 }
 
 func (c *Client) AddCookie(key, value string) *Client {
-	c.opts.headers.cookies[key] = value
+	c.opts.headers.cookies.Set(key, value)
 	return c
 }
 
-func (c *Client) AddCookies(cookies RequestCookies) *Client {
+func (c *Client) AddCookies(cookies Mapper) *Client {
 	for key, value := range cookies {
-		c.opts.headers.cookies[key] = value
+		c.opts.headers.cookies.Set(key, value)
 	}
 	return c
 }
 
 func (c *Client) AddFile(fileName, filePath string) *Client {
-	c.opts.files[fileName] = filePath
+	c.opts.files.Set(fileName, filePath)
 	return c
 }
 
-func (c *Client) AddFiles(files RequestFiles) *Client {
+func (c *Client) AddFiles(files Mapper) *Client {
 	for key, value := range files {
-		c.opts.files[key] = value
+		c.opts.files.Set(key, value)
 	}
+	return c
+}
+
+func (c *Client) AddBodyByte(body []byte) *Client {
+	c.opts.body = body
 	return c
 }
 
@@ -144,7 +149,7 @@ func (c *Client) Get(url string) (*Response, error) {
 		return nil, EmptyUrlErr
 	}
 	params := make([]string, 0)
-	for key, value := range c.opts.params {
+	for key, value := range c.opts.params.Mapper {
 		params = append(params, fmt.Sprintf("%s=%s", key, value))
 	}
 	url = fmt.Sprintf("%s?%s", url, strings.Join(params, "&"))
@@ -163,12 +168,12 @@ func (c *Client) SendFile(url string, options ...RequestOption) (*Response, erro
 	if url == "" {
 		return nil, EmptyUrlErr
 	}
-	if len(c.opts.files) == 0 {
+	if len(c.opts.files.Mapper) == 0 {
 		return nil, EmptyFileErr
 	}
 	bodyBuffer := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuffer)
-	for fileName, filePath := range c.opts.files {
+	for fileName, filePath := range c.opts.files.Mapper {
 		fileWriter, err := bodyWriter.CreateFormFile(fileName, path.Base(filePath))
 		if err != nil {
 			return nil, err
@@ -187,7 +192,7 @@ func (c *Client) SendFile(url string, options ...RequestOption) (*Response, erro
 		_ = file.Close()
 	}
 	_ = bodyWriter.Close()
-	c.opts.headers.normal["content-type"] = bodyWriter.FormDataContentType()
+	c.opts.headers.normal.Set("content-type", bodyWriter.FormDataContentType())
 
 	return c.call(url, fasthttp.MethodPost, c.opts.headers, bodyBuffer.Bytes())
 }
@@ -201,11 +206,11 @@ func (c *Client) call(url, method string, headers requestHeaders, body []byte) (
 	req.SetRequestURI(url)
 	req.Header.SetMethod(method)
 	// set cookie
-	for key, value := range headers.cookies {
+	for key, value := range headers.cookies.Mapper {
 		req.Header.SetCookie(key, value)
 	}
 	// set header
-	for key, value := range headers.normal {
+	for key, value := range headers.normal.Mapper {
 		req.Header.Set(key, value)
 	}
 
@@ -252,13 +257,16 @@ func (c *Client) call(url, method string, headers requestHeaders, body []byte) (
 	}
 
 	ret := &Response{
-		Cookie:     make(RequestCookies),
+		Cookie:     RequestCookies{Mapper: NewCookies()},
+		Header:     RequestHeaders{Mapper: NewHeaders()},
 		StatusCode: resp.StatusCode(),
 		Body:       resp.Body(),
 	}
-
+	resp.Header.VisitAll(func(key, value []byte) {
+		ret.Header.Set(string(key), string(value))
+	})
 	resp.Header.VisitAllCookie(func(key, value []byte) {
-		ret.Cookie[string(key)] = string(value)
+		ret.Cookie.Set(string(key), string(value))
 	})
 	return ret, nil
 }
@@ -266,5 +274,6 @@ func (c *Client) call(url, method string, headers requestHeaders, body []byte) (
 type Response struct {
 	StatusCode int
 	Body       []byte
+	Header     RequestHeaders
 	Cookie     RequestCookies
 }

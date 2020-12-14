@@ -3,6 +3,11 @@
 # fasthttp-client
 基于[fasthttp](https://github.com/valyala/fasthttp#installapplication/x-www-form-urlencoded)的http请求客户端，用于快速构建http请求
 
+# 更新
+- 2020-12-14
+	- 返回添加header
+	- 重新设计了请求时入参的结构（param，header，cookie等）
+	
 # 功能
 - get
 - post
@@ -15,28 +20,27 @@
     ```
     res, err = NewClient().
     		AddParam("param1", "param1").
-    		AddParams(RequestParams{
-    			"param2": "param2",
-    			"param3": "param3",
-    		}).
+    		AddParams(
+    			NewParams().
+    				Set("param2", "param2").
+    				Set("param3", "param3")).
     		AddHeader("header1", "header1").
-    		AddHeaders(RequestHeaders{
-    			"header2": "header2",
-    			"header3": "header3",
-    		}).
+    		AddHeaders(
+    			NewHeaders().
+    				Set("header2", "header2").
+    				Set("header3", "header3")).
     		AddCookie("cookie1", "cookie1").
-    		AddCookies(RequestCookies{
-    			"cookie2": "cookie2",
-    			"cookie3": "cookie3",
-    		}).
+    		AddCookies(
+    			NewCookies().
+    				Set("cookie1", "cookie1").
+    				Set("cookie2", "cookie2")).
     		Get("http://httpbin.org/get")
     ```
 
 - post
 
   ```
-  res, err = NewClient().
-  		AddBodyStruct(
+  AddBodyStruct(
   			struct {
   				Request string `json:"request" form:"request"`
   				Num     int    `json:"num"`
@@ -46,16 +50,16 @@
   			},
   		).
   		AddHeader("header1", "header1").
-  		AddHeaders(RequestHeaders{
-  			"header2": "header2",
-  			"header3": "header3",
+  		AddHeaders(
+  			NewHeaders().
+  				Set("header2", "header2").
+  				Set("header3", "header3"),
   			//"content-type": "application/json",
-  		}).
+  		).
   		AddCookie("cookie1", "cookie1").
-  		AddCookies(RequestCookies{
-  			"cookie2": "cookie2",
-  			"cookie3": "cookie3",
-  		}).
+  		AddCookies(NewCookies().
+  			Set("cookie1", "cookie1").
+  			Set("cookie2", "cookie2")).
   		Post("http://httpbin.org/post")
   ```
 
@@ -63,11 +67,10 @@
 
   ```
   res, err = NewClient().
-  		AddFile("a", "/Users/chuwt/Downloads/d.txt").
+  		AddFile("a", "/Users/chuwt/Downloads/test.jpg").
   		AddFiles(
-  			RequestFiles{
-  				"b": "/Users/chuwt/Downloads/d.txt",
-  			},
+  			NewFiles().
+  				Set("b", "/Users/chuwt/Downloads/test.jpg"),
   		).
   		SendFile("http://httpbin.org/post")
   ```

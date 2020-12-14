@@ -15,20 +15,20 @@ func TestGet(t *testing.T) {
 
 	res, err = NewClient().
 		AddParam("param1", "param1").
-		AddParams(RequestParams{
-			"param2": "param2",
-			"param3": "param3",
-		}).
+		AddParams(
+			NewParams().
+				Set("param2", "param2").
+				Set("param3", "param3")).
 		AddHeader("header1", "header1").
-		AddHeaders(RequestHeaders{
-			"header2": "header2",
-			"header3": "header3",
-		}).
+		AddHeaders(
+			NewHeaders().
+				Set("header2", "header2").
+				Set("header3", "header3")).
 		AddCookie("cookie1", "cookie1").
-		AddCookies(RequestCookies{
-			"cookie2": "cookie2",
-			"cookie3": "cookie3",
-		}).
+		AddCookies(
+			NewCookies().
+				Set("cookie1", "cookie1").
+				Set("cookie2", "cookie2")).
 		Get("http://httpbin.org/get")
 	if err == nil {
 		t.Log(string(res.Body))
@@ -51,16 +51,16 @@ func TestPost(t *testing.T) {
 			},
 		).
 		AddHeader("header1", "header1").
-		AddHeaders(RequestHeaders{
-			"header2": "header2",
-			"header3": "header3",
+		AddHeaders(
+			NewHeaders().
+				Set("header2", "header2").
+				Set("header3", "header3"),
 			//"content-type": "application/json",
-		}).
+		).
 		AddCookie("cookie1", "cookie1").
-		AddCookies(RequestCookies{
-			"cookie2": "cookie2",
-			"cookie3": "cookie3",
-		}).
+		AddCookies(NewCookies().
+			Set("cookie1", "cookie1").
+			Set("cookie2", "cookie2")).
 		Post("http://httpbin.org/post")
 
 	if err == nil {
@@ -74,9 +74,8 @@ func TestSendFile(t *testing.T) {
 	res, err = NewClient().
 		AddFile("a", "/Users/chuwt/Downloads/test.jpg").
 		AddFiles(
-			RequestFiles{
-				"b": "/Users/chuwt/Downloads/test.jpg",
-			},
+			NewFiles().
+				Set("b", "/Users/chuwt/Downloads/test.jpg"),
 		).
 		SendFile("http://httpbin.org/post")
 	if err == nil {
@@ -93,4 +92,11 @@ func TestSyncPool(t *testing.T) {
 		return
 	}
 	t.Log(string(res.Body))
+}
+
+func TestMapper(t *testing.T) {
+	adder := NewHeaders().
+		Set("a", "b").
+		Set("c", "d")
+	t.Log(adder)
 }
