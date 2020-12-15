@@ -4,6 +4,8 @@
 基于[fasthttp](https://github.com/valyala/fasthttp#installapplication/x-www-form-urlencoded)的http请求客户端，用于快速构建http请求
 
 # 更新
+- 2020-12-15
+    - 修复get时url自带query导致最后加了一个？的bug
 - 2020-12-14
 	- 返回添加header
 	- 重新设计了请求时入参的结构（param，header，cookie等）

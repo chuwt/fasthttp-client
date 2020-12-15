@@ -148,11 +148,14 @@ func (c *Client) Get(url string) (*Response, error) {
 	if url == "" {
 		return nil, EmptyUrlErr
 	}
+
 	params := make([]string, 0)
 	for key, value := range c.opts.params.Mapper {
-		params = append(params, fmt.Sprintf("%s=%s", key, value))
+		params = append(params, addString(key, "=", value))
 	}
-	url = fmt.Sprintf("%s?%s", url, strings.Join(params, "&"))
+	if len(params) != 0 {
+		url = addString(url, "?", strings.Join(params, "&"))
+	}
 	return c.call(url, fasthttp.MethodGet, c.opts.headers, nil)
 }
 
@@ -276,4 +279,12 @@ type Response struct {
 	Body       []byte
 	Header     RequestHeaders
 	Cookie     RequestCookies
+}
+
+func addString(ss ...string) string {
+	b := strings.Builder{}
+	for _, s := range ss {
+		b.WriteString(s)
+	}
+	return b.String()
 }
