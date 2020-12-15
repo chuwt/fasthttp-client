@@ -10,6 +10,7 @@ import (
 	"github.com/valyala/fasthttp/fasthttpproxy"
 	"io"
 	"mime/multipart"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -144,19 +145,26 @@ func (c *Client) AddBodyBytes(bodyBytes []byte) *Client {
 	return c
 }
 
-func (c *Client) Get(url string) (*Response, error) {
-	if url == "" {
+func (c *Client) Get(rawUrl string) (*Response, error) {
+	if rawUrl == "" {
 		return nil, EmptyUrlErr
 	}
-
-	params := make([]string, 0)
+	var (
+		urlValue = url.Values{}
+		err      error
+	)
+	queryArray := strings.SplitN(rawUrl, "?", 2)
+	if len(queryArray) != 1 {
+		urlValue, err = url.ParseQuery(queryArray[1])
+		if err != nil {
+			return nil, err
+		}
+	}
 	for key, value := range c.opts.params.Mapper {
-		params = append(params, addString(key, "=", value))
+		urlValue.Set(key, value)
 	}
-	if len(params) != 0 {
-		url = addString(url, "?", strings.Join(params, "&"))
-	}
-	return c.call(url, fasthttp.MethodGet, c.opts.headers, nil)
+	reqUrl := addString(queryArray[0], "?", urlValue.Encode())
+	return c.call(reqUrl, fasthttp.MethodGet, c.opts.headers, nil)
 }
 
 func (c *Client) Post(url string) (*Response, error) {

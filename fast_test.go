@@ -14,7 +14,10 @@ var (
 
 func TestGet(t *testing.T) {
 	res, err = NewClient().Get("http://httpbin.org/get")
-	t.Log(string(res.Body), err)
+	if err == nil {
+		t.Log(string(res.Body))
+	}
+	t.Log(err)
 
 	res, err = NewClient().
 		AddParam("param1", "param1").
@@ -32,7 +35,7 @@ func TestGet(t *testing.T) {
 			NewCookies().
 				Set("cookie1", "cookie1").
 				Set("cookie2", "cookie2")).
-		Get("http://httpbin.org/get")
+		Get("http://httpbin.org/get?am=999")
 	if err == nil {
 		t.Log(string(res.Body))
 	}
@@ -41,7 +44,10 @@ func TestGet(t *testing.T) {
 
 func TestPost(t *testing.T) {
 	res, err = NewClient().Post("http://httpbin.org/post")
-	t.Log(string(res.Body), err)
+	if err == nil {
+		t.Log(string(res.Body))
+	}
+	t.Log(err)
 
 	res, err = NewClient().
 		AddBodyStruct(
