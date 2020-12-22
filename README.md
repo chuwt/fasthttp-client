@@ -19,7 +19,7 @@
 
 # 快速开始
 - get
-    ```
+    ```golang
     res, err = NewClient().
     		AddParam("param1", "param1").
     		AddParams(
@@ -41,8 +41,9 @@
 
 - post
 
-  ```
-  AddBodyStruct(
+  ```golang
+  res, err = NewClient().
+  		AddBodyStruct(
   			struct {
   				Request string `json:"request" form:"request"`
   				Num     int    `json:"num"`

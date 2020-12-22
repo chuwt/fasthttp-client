@@ -1,10 +1,8 @@
 package fasthttp
 
 import (
-	"net/http"
 	_ "net/http/pprof"
 	"testing"
-	"time"
 )
 
 var (
@@ -108,21 +106,4 @@ func TestMapper(t *testing.T) {
 		Set("a", "b").
 		Set("c", "d")
 	t.Log(adder)
-}
-
-func TestMem(t *testing.T) {
-	go func() {
-		http.ListenAndServe("0.0.0.0:6061", nil)
-	}()
-
-	ticker := time.NewTicker(1 * time.Second)
-	client := NewClient()
-	for {
-		res, err := client.Get("http://localhost:8000/block/info")
-		if err != nil {
-			continue
-		}
-		t.Log(res.Body)
-		<-ticker.C
-	}
 }
